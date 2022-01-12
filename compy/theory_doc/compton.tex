@@ -1,0 +1,346 @@
+\documentclass[letterpaper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{graphicx}
+
+\title{Some Theoretical Background for \texttt{compy}}
+
+\author{Brooks Kinch \\ LANL CCS-2}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Simulating a Compton Scattering Event}
+
+The fundamental quantity in any description of photon scattering (Compton or otherwise) is the probability to transition from one direction and energy to another direction and energy through a scattering event. For electromagnetic radiation in the usual transport limit---i.e., we ignore any wave effects and treat the light as a stream of discrete point-like particles---photons are imagined to travel in a straight line in some specific direction at some specific energy and then, randomly and rapidly, scatter to some new direction at some new energy. For Compton scattering, this transition from pre- to post-scatter direction/energy is due to the photon-electron interaction, but this formalism can apply equally well to, e.g., fluorescent atomic absorption and re-emission. The interaction of photons with free electrons is sufficiently rapid that the transition so described is effectively instantaneous for any reasonable time resolution for nearly all applications.
+
+%% this is not necessarily true, however, for atomic processes described as ``effective'' scattering, and so for generality we will allow for an in-principle delay when developing the time-dependent treatment.
+
+The probability (density) for a photon at energy $\varepsilon = h\nu$ moving in direction $\mathbf{n}$ to scatter to $\varepsilon^\prime = h \nu^\prime$ in direction $\mathbf{n^\prime}$ is $p(\varepsilon, \mathbf{n} \to \varepsilon^\prime, \mathbf{n^\prime})$. The dimensions of the transition probability density function are per unit post-scatter energy per unit post-scatter solid angle. That is, $p(\varepsilon, \mathbf{n} \to \varepsilon^\prime, \mathbf{n^\prime})$ is the probability for a photon with exact energy $\varepsilon$ traveling in exact direction $\mathbf{n}$ to scatter within $d \varepsilon^\prime$ of $\varepsilon^\prime$, traveling within $d \Omega^\prime$ of $\mathbf{n^\prime}$. The probability is normalized:
+
+\begin{equation}
+\int_0^\infty d\varepsilon^\prime \int d\Omega^\prime \ p(\varepsilon, \mathbf{n} \to \varepsilon^\prime, \mathbf{n^\prime}) = 1.
+\end{equation}
+
+The scattering geometry is described by two vectors: the pre- and post-scatter photon trajectories, $\mathbf{n}$ and $\mathbf{n^\prime}$. Scattering therefore takes place in a \emph{plane}, with the change in photon direction described by the ``scattering angle'' $\theta^\prime$, the angle of the final direction measured relative to the initial. That is, $\mathbf{n} \cdot \mathbf{n^\prime} = \cos \theta^\prime = \mu^\prime$. The scattering angle $\theta^\prime$ lies on $[0, \pi]$, i.e., no deflection whatsoever vs. an exact reversal. The transition probability can therefore be written in terms of the (scalar) scattering angle only: $p(\varepsilon \to \varepsilon^\prime, \theta^\prime)$. It is more convenient to express directly in terms of $\mu^\prime$, i.e., $p(\varepsilon \to \varepsilon^\prime, \mu^\prime)$, which allows the normalization condition to be re-expressed as:
+
+\begin{equation}
+2\pi \int_0^\infty d\varepsilon^\prime \int_{-1}^1 d\mu^\prime \ p(\varepsilon \to \varepsilon^\prime, \mu^\prime) = 1.
+\end{equation}
+
+\noindent Note that we have effectively chosen standard spherical coordinates such that $\mathbf{n}$ is parallel to the $z$-axis.
+
+To actually calculate $p (\varepsilon \to \varepsilon^\prime, \mu^\prime)$, we design a Monte Carlo experiment:
+
+\begin{enumerate}
+
+\item Sample from an electron velocity distribution. In principle, any distribution that can be sampled could be used here (even non-analytic distributions, e.g., the output of a PIC simulation), though we will specialize to the most common case: a thermal electron population. For non-relativistic electron temperatures (conservatively, $T_e < 10^7$ K), we sample from the standard Maxwell-Boltzmann distribution:
+
+\begin{equation}
+f_\mathrm{MB}(\beta) = \sqrt{2/\pi} \Theta_e^{-3/2} \beta^2 \exp[-\beta^2/(2\Theta_e)],
+\end{equation}
+
+\noindent where $\beta = v/c$ and $\Theta_e = kT_e/m_e c^2$; $f_\mathrm{MB}(\beta)$ is the probability to randomly sample an electron within $d\beta$ of speed $\beta$. Of many possible sampling methods (acceptance-rejection, inverse CDF), we demonstrate here a particularly simple method. For a non-relativistic thermal electron, its three (orthogonal) spatial velocity components are independent, each gaussian-distributed with mean zero and variance equal to $\Theta_e$. Using the Box-Muller transform, two random numbers uniformly distributed on $[0, 1)$, $u_1$ and $u_2$, are used to sample $\beta_x$:
+
+\begin{equation}
+\beta_x = \Theta_e^{1/2} \sqrt{-2 \ln u_1} \cos (2 \pi u_2).
+\end{equation}
+
+\noindent $\beta_y$ and $\beta_z$ are sampled the same way (requiring, in total, six random numbers to be generated). Finally, of course, $\beta = \sqrt{\beta_x^2 + \beta_y^2 + \beta_z^2}$. In addition to the sampled electron's \emph{speed}, we must sample its direction with respect to the pre-scatter photon's trajectory, which we shall call $\theta_e$. In the non-relativistic case, this is extremely straightforward: $\theta_e$ is uniformly distributed in cosine; i.e., a number $u$ chosen uniformly on the unit interval transforms to $\theta_e = \cos^{-1} \mu_e = \cos^{-1} (2 u - 1)$.
+
+For relativistic electrons ($T_e \geq 10^7$ K), the sampling procedure is substantially more subtle. First, the correct speed distribution is instead Maxwell-J\"{u}ttner:
+
+\begin{equation}
+f_\mathrm{MJ}(\gamma) = \frac{\gamma^2 \beta}{\Theta_e K_2(1/\Theta_e)} \exp(-\gamma/\Theta_e),
+\end{equation}
+
+where $\gamma = 1/\sqrt{1 - \beta^2}$, and $K_2$ is the modified Bessel function of the second kind. Below we shall outline two possible procedures for sampling the relativistic electron speed ($\gamma$ and $\beta$). For now, let us consider a simple question: In the electron fluid frame (i.e., the frame with zero bulk motion), what is the probability for a photon of energy $\varepsilon$ to scatter over time interval $dt$?
+
+Consider a scenario where a photon exists at the origin of a Cartesian coordinate system at $t = 0$ and travels some distance $\ell$, at angle $\theta_e$ with respect to the $x$-axis, before it scatters. In this frame (the ``unprimed'' frame), the starting spacetime coordinates are $(0,\ 0,\ 0,\ 0)$ and the final spacetime coordinates are $(\ell/c,\ \ell \cos \theta_e,\ \ell \sin \theta_e,\ 0)$. For simplicity, consider a uniform-in-speed, \emph{totally anisotropic} electron distribution. That is, an electron fluid with number density $n_e$ flows at speed $\beta$ entirely in the positive $x$ direction (i.e., at angle $\theta_e$ with respect to the pre-scatter photon trajectory). We can write down, for such a flow, a current (number) density four-vector: $(n_e c,\ n_e \beta c,\ 0,\ 0)$. Let us boost to a (primed) frame in which this electron flow is static. Because of our convenient choice of coordinate system, this is simply a standard Lorentz boost in the positive $x$ direction. Performing a Lorentz boost in standard configuration on the current density four-vector, we find
+
+\begin{equation}
+\begin{pmatrix}
+\gamma & -\beta \gamma & 0 & 0 \\
+-\beta \gamma & \gamma & 0 & 0 \\
+0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1
+\end{pmatrix}
+\begin{pmatrix}
+n_e c \\
+n_e \beta c \\
+0 \\
+0 \\
+\end{pmatrix}
+=
+\begin{pmatrix}
+n_e c / \gamma \\
+0 \\
+0 \\
+0 \\
+\end{pmatrix}.
+\end{equation}
+
+\noindent By inspection, we conclude that $n_e^\prime = n_e/\gamma$.
+
+Consider, now, the time elapsed over the photon's trajectory, as measured in the primed frame. The photon's initial spacetime coordinate remains, trivially, $(0,\ 0,\ 0,\ 0)$. The final spacetime coordinate transforms like so:
+
+\begin{equation}
+\begin{pmatrix}
+\gamma & -\beta \gamma & 0 & 0 \\
+-\beta \gamma & \gamma & 0 & 0 \\
+0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1
+\end{pmatrix}
+\begin{pmatrix}
+c(\ell/c) \\
+\ell \cos \theta_e \\
+\ell \sin \theta_e \\
+0 \\
+\end{pmatrix}
+=
+\begin{pmatrix}
+c (\ell / c) \gamma (1 - \beta \cos \theta_e) \\
+\ell \gamma (\cos \theta_e - \beta) \\
+\ell \sin \theta_e \\
+0 \\
+\end{pmatrix}.
+\end{equation}
+
+\noindent Since $\Delta t = \ell / c$, we see by inspection that $\Delta t^\prime = \Delta t \gamma (1 - \beta \cos \theta_e)$. In the infinitesimal limit, therefore, $dt^\prime = dt \gamma (1 - \beta \cos \theta_e)$.
+
+Next we consider the fact that the probability to scatter must be agreed upon by observers in all frames. As a frequentist might stress, probability is simply \emph{counting} after a fashion, and though different observers might disagree on, say, the \emph{ordering} of events---they must agree on the events themselves. And so we write $p(dt) = p(dt^\prime)$. In the primed frame, we have simply a photon of energy $\varepsilon^\prime = \varepsilon \gamma (1 - \beta \cos \theta_e)$ (the usual Doppler shift formula) passing through a static sea of electrons of density $n_e^\prime$. Thus the probability to scatter is over $dt^\prime$ is:
+
+\begin{equation}
+p(dt^\prime) = n_e^\prime \sigma_\mathrm{KN} (\varepsilon^\prime) c dt^\prime,
+\end{equation}
+
+\noindent where $\sigma_\mathrm{KN} (\varepsilon^\prime)$ is the total (post-scatter angle/frequency-integrated) Klein-Nishina cross section, evaluated at the Doppler-shifted photon energy. Making the primed-to-unprimed substitutions we derived earlier, we can write this as:
+
+\begin{equation}
+p(dt^\prime) = n_e \sigma_\mathrm{KN} (\varepsilon^\prime) (1 - \beta \cos \theta_e) c dt = p(dt).
+\end{equation}
+
+\noindent In other words, we could say that an electron moving at speed $\beta$ and angle $\theta_e$ (with respect to the pre-scatter photon trajectory) presents an ``effective cross section'' in the fluid rest frame equivalent to:
+
+\begin{equation}
+\sigma_\mathrm{KN,eff} (\varepsilon; \beta, \theta_e) = \sigma_\mathrm{KN} \left[ \varepsilon \gamma (1 - \beta \cos \theta_e)\right] (1 - \beta \cos \theta_e).
+\end{equation}
+
+In a real \emph{not} totally anisotropic electron fluid, the fraction of electrons moving at speed $\beta$ (i.e., with Lorentz factor $\gamma$) at angle $\theta_e$ relative to the pre-scatter photon's trajectory is $f_\mathrm{MJ} (\gamma) d\gamma\ d (\cos \theta_e)/2$. Writing $\cos \theta_e = \mu_e$, we have:
+
+\begin{equation}
+\sigma_\mathrm{KN,eff}(\varepsilon) = \frac{1}{2} \int_1^\infty d\gamma \int_{-1}^1 d\mu_e\ \sigma_\mathrm{KN} \left[ \varepsilon \gamma (1 - \beta \mu_e ) \right] (1 - \beta \mu_e) f_\mathrm{MJ} (\gamma).
+\end{equation}
+
+The total cross section is a \emph{weighted} average over the electron speed distribution. Sampling an electron appropriately therefore requires sampling $\beta, \mu_e$ from a \emph{joint} probability density function, factoring in both the ``weighting'' factor $(1 - \beta \mu_e)$ \emph{and} the evaluation of the Klein-Nishina cross section at the Doppler-shifted photon energy. Our procedure is to use rejection sampling on the easier-to-sample auxiliary function
+
+\begin{equation}
+f(\beta, \mu_e) = \sigma_T \frac{1 - \beta \mu_e}{2} f_\mathrm{MJ} (\gamma).
+\end{equation}
+
+\noindent Because $\sigma_T = \sigma_\mathrm{KN} (0) > \sigma_\mathrm{KN} (\varepsilon^\prime > 0)$, the auxiliary function, as required, is always greater than the original; the ratio between them is simply
+
+\begin{equation}
+\frac{f_\mathrm{orig}}{f_\mathrm{aux}} = \frac{\sigma_\mathrm{KN} (\varepsilon^\prime)}{\sigma_T} = \frac{1}{\sigma_T} 2\pi \int_{-1}^1 \frac{d\sigma_\mathrm{KN}}{d\Omega}\ d\mu = \mathrm{TODO} = f_\mathrm{rej}(\varepsilon^\prime).
+\end{equation}
+
+[NOTE: The missing expression (TODO) is computed in \texttt{compy} as 1/\texttt{sigadjust}---it is too unwieldy to reproduce here.] The steps are:
+
+\begin{enumerate}
+\item Sample an electron speed ($\gamma$ and $\beta$) from $f_\mathrm{MJ}$ using one of the methods described below.
+\item Sample a corresponding value for $\mu_e$ \emph{given} the already-sampled electron speed.
+\item Calculate $\varepsilon^\prime = \varepsilon (1 - \beta \mu_e)$. Draw a uniformly-distributed random number $u$ on the unit interval. If $u \leq f_\mathrm{rej}(\varepsilon^\prime)$, accept the sample values for $\beta, \mu_e$; otherwise, draw a new $\beta, \mu_e$ pair and try again.
+\end{enumerate}
+
+Let us consider step (b) first. Suppose we have sampled $f_\mathrm{MJ}$ (somehow) and we now have a value for $\beta$. Applying the definition of conditional probability:
+
+\begin{equation}
+f(\beta, \mu_e) = f(\mu_e | \beta) f(\beta).
+\end{equation}
+
+If we have a properly-sampled value for $\beta$ from its \emph{marginal} distribution, we can sample the \emph{joint} distribution by using the already-sampled $\beta$ as the ``given value'' in the conditional distribution for $\mu_e$. The conditional distribution for $\mu_e$ is simply the (normalized) cross section weight. To perform the sampling, we apply the inverse CDF method:
+
+\begin{equation}
+F(\mu_e | \beta) = \int_{-1}^{\mu_e} \frac{1 - \beta \mu_e^\prime}{2} d\mu_e^\prime = \frac{1}{2} (\mu_e + 1) - \frac{\beta}{4}(\mu_e^2 - 1) = u,
+\end{equation}
+
+\noindent solving for $\mu_e$
+
+\begin{equation}
+\mu_e = \frac{1 - \sqrt{\beta^2 - 4 \beta u + 2 \beta + 1}}{\beta}.
+\end{equation}
+
+So, substituting the somehow-sampled $\beta$ and our as-usual uniform on $[0, 1)$ random number $u$ into the above expression yields a properly-sampled value for $\mu_e$ (the other root of the quadratic gives unphysical $\mu_e$ values). We then continue with step (c) and repeat until we accept a $\beta, \mu_e$ pair. For $\beta \ll 1$, the above expression reduces to $\mu_e = 2u - 1$; that is, we recover the non-relativistic sampling rule for $\mu_e$ that we stated (without proof) at the start of this section.
+
+Finally, there are (at least) two choices for how to sample $\gamma$ (and thus $\beta$) from $f_\mathrm{MJ}$: rejection sampling (again) and the inverse CDF method. We have found through numerical experimentation that for any temperature in the range $10^7\ \mathrm{K} \leq T_e < 10^{13}\ \mathrm{K}$, one million grid points logarithmically spaced from $\gamma = 1$ to $\gamma = 10^5$ is sufficient to resolve the Maxwell-J\"{u}ttner distribution sans normalization $1/[\Theta_e K_2 (1/\Theta_e)]$; the normalization of the gridded representation can then be fixed simply by trapezoidal integration. This approach is advantageous as it does not require direct evaluation of $K_2$, which can present precision difficulties for low $\Theta_e$. In practice, we use this first grid to estimate the value of $\gamma_\mathrm{max}$, above which the sampling probability for $\gamma$ is less than $10^{-8}$; $\gamma_\mathrm{max}$ is then used as the upper bound for the CDF constructed (again with one million grid points) for use with the inverse CDF method. In brief, if the CDF for a certain probability distribution is known, then a generated uniform random variable $u$, on $[0, 1)$, is translated to a random variable $x$ by solving $x = F^{-1}(u)$. In this case, the transformation is two steps: a bisection (binary) search to find $i$ such that $F(\gamma_i) \leq u < F(\gamma_{i+1})$, followed by a linear interpolation to locally approximate the inverse function $\gamma = F^{-1}(u)$:
+
+\begin{equation}
+\gamma = \gamma_i + \frac{\gamma_{i+1} - \gamma_i}{F(\gamma_{i+1}) - F(\gamma_i)} [u - F(\gamma_i)].
+\end{equation}
+
+\noindent Rejection sampling of $f_\mathrm{MJ}$ is accomplished using the auxiliary function
+
+\begin{equation}
+f_\mathrm{aux}(\gamma) = \frac{\gamma^2}{\Theta_e K_2(1/\Theta_e)} \exp(-\gamma/\Theta_e);
+\end{equation}
+
+\noindent the ratio between original-to-auxiliary is:
+
+\begin{equation}
+\frac{f_\mathrm{MJ}}{f_\mathrm{aux}} = \beta = \sqrt{1 - \gamma^{-2}} = f_\mathrm{rej} (\gamma) < 1,
+\end{equation}
+
+\noindent as required. We sample from $f_\mathrm{aux}$ by numerically inverting its CDF for $\gamma$ given a value for $u$ on $[0, 1)$, as usual:
+
+\begin{equation}
+F_\mathrm{aux} (\gamma) = \frac{1}{\Theta_e K_2(1/\Theta_e)} \left\lbrace 1 - \exp \left[\left(1 - \gamma\right)/\Theta_e\right] \frac{\gamma^2 + 2\gamma\Theta_e + 2\Theta_e^2}{2\Theta_e^2 + 2\Theta_e + 1} \right\rbrace = u.
+\end{equation}
+
+We accept the so-sampled $\gamma$ value with probability equal to $f_\mathrm{rej} (\gamma)$---or try again.
+
+\item Transform to the electron rest frame. Through whichever method, we now have a properly sampled electron speed $\beta$. To apply the Klein-Nishina differential cross section formula, we must transform our coordinates to this electron's rest frame. Let us begin with coordinates such that the electron's pre-scatter velocity is parallel to the $z$-axis. If the electron velocity distribution is isotropic (a reasonable assumption so long as we are in the ``fluid frame'' to start), then the angle between the pre-scatter photon trajectory and initial electron velocity is uniformly distributed in cosine. That is:
+
+\begin{equation}
+\mathbf{k^0} = (\varepsilon,\ \varepsilon \sin \theta_0,\ 0,\ \varepsilon \cos \theta_0);
+\end{equation}
+
+\noindent $\mathbf{k^0}$ is the pre-scatter photon four-momentum; $\theta_0$ is the pre-scatter angle between the electron and photon trajectories---from our as-usual generated $u$, $\theta_0 = \cos^{-1} (2u-1)$ (see: uniform sphere point picking). At this stage we have only two vectors, and so their arrangement in three dimensional space has an unconstrained degree of freedom: $\phi_0$. For convenience, we set $\phi_0 = 0$, so that the pre-scatter photon direction lies in the $x$-$z$ plane.
+
+We then perform a coordinate Lorentz boost to the electron rest frame. The $z$-direction boost is
+
+\begin{equation}
+\Lambda(\beta_z) =
+\begin{pmatrix}
+\gamma & 0 & 0 & -\beta_z \gamma \\
+0 & 1 & 0 & 0 \\
+0 & 0 & 1 & 0 \\
+-\beta_z \gamma & 0 & 0 & \gamma
+\end{pmatrix},
+\end{equation}
+
+\noindent and so we write the electron rest frame pre-scatter photon four-momentum as:
+
+\begin{equation}
+\mathbf{k^{0, erf}} = \Lambda(\beta_z) \cdot \mathbf{k^0}.
+\end{equation}
+
+\noindent In this frame the photon energy is
+
+\begin{equation}
+\varepsilon^\mathrm{erf} = k^{0,\mathrm{erf}}_0 = \gamma \varepsilon (1 - \beta_z \cos \theta_0),
+\end{equation}
+
+\noindent and the angle between the photon's trajectory and the (boosted) $z$-axis is
+
+\begin{equation}
+\theta^\mathrm{erf}_0 = \cos^{-1} (k^{0,\mathrm{erf}}_3/k^{0,\mathrm{erf}}_0) = \cos^{-1} \left(\frac{\cos \theta_0 - \beta_z}{1 - \beta_z \cos \theta_0}\right).
+\end{equation}
+
+Before the next step, we perform one additional coordinate transformation: to align the pre-scatter photon four-momentum in the electron rest frame with the $z$-axis, we rotate the coordinate system about the $y$-axis through an angle $\theta^\mathrm{erf}_0$ (note: $\phi$ remains zero after the boost). The matrix which accomplishes this transformation is:
+
+\begin{equation}
+R_y (\theta) =
+\begin{pmatrix}
+1 & 0 & 0 & 0 \\
+0 & \cos \theta & 0 & - \sin \theta \\
+0 & 0 & 1 & 0 \\
+0 & \sin \theta & 0 & \cos \theta
+\end{pmatrix}.
+\end{equation}
+
+\noindent So, finally, we have
+
+\begin{equation}
+\mathbf{k^{0, erf, rot}} = R_y(\theta^\mathrm{erf}_0) \cdot \mathbf{k^{0, erf}}.
+\end{equation}
+
+The pre-scatter photon energy in this boosted, rotated frame remains, of course, $\varepsilon^\mathrm{erf}$; the $x$ and $y$ components of its four-momentum, however, are zero.
+
+\item Apply Klein-Nishina. In the electron rest frame, Compton scattering proceeds according to the Klein-Nishina differential scattering cross section. That is:
+
+\begin{equation}
+\frac{d \sigma}{d \Omega} = \frac{3}{16\pi} \sigma_T \left( \frac{\epsilon^\prime}{\epsilon} \right)^2 \left( \frac{\epsilon^\prime}{\epsilon} + \frac{\epsilon}{\epsilon^\prime} - \sin^2 \theta \right),
+\end{equation}
+
+\noindent where $\sigma_T$ is the Thomson scattering cross section, $\epsilon = \varepsilon^\mathrm{erf}/m_e c^2$ (i.e., the dimensionless pre-scatter photon energy), $\epsilon^\prime/\epsilon$ is the ratio of post- to pre-scatter photon energy---the ``amplification''---and $\theta$ is the angle of the post-scatter photon trajectory relative to the pre-scatter photon trajectory. Because we chose our coordinates so that the pre-scatter photon trajectory is parallel to the $z$-axis in the boosted, rotated frame, $\theta$ is also just the standard polar angle (in this frame). The azimuthal symmetry of the Klein-Nishina cross section dictates that the post-scatter $\phi$ value (in this frame) is uniformly distributed on $[0, 2\pi)$. The problem, then, is to appropriately sample the scattering angle $\theta$ and, consequently, the post-scatter photon energy $\varepsilon^\prime$.
+
+From conservation laws, it is easy to show that
+
+\begin{equation}
+\frac{\epsilon^\prime}{\epsilon} = \frac{1}{1 + \epsilon (1 - \cos \theta)} = \frac{1}{1 + \epsilon (1 - \mu)},
+\label{eq:KN_energy_ratio}
+\end{equation}
+
+\noindent where $\mu = \cos \theta$. Making this substitution into the Klein-Nishina formula,
+
+\begin{equation}
+\frac{d \sigma}{d \Omega} = \frac{3}{16\pi} \sigma_T \left[\frac{1}{1 + \epsilon (1 - \mu)}\right]^2 \left[ \frac{1}{1 + \epsilon (1 - \mu)} + \epsilon(1 - \mu) + \mu^2 \right] = f(\epsilon, \mu).
+\end{equation}
+
+\noindent In this form, it is apparent that the Klein-Nishina cross section depends only on the dimensionless pre-scatter photon energy and the (cosine of the) polar angle of the post-scatter photon trajectory. We use this form to construct a CDF for the probability for the photon to scatter to angle $\mu^\prime < \mu$:
+
+\begin{equation}
+F(\epsilon, \mu) = \frac{\int_{-1}^\mu f(\epsilon, \mu^\prime) d\mu^\prime}{\int_{-1}^1 f(\epsilon, \mu^\prime) d\mu^\prime} =
+\begin{cases}
+\frac{1}{8} (4 + 3\mu + \mu^3) & \epsilon < 0.001 \\
+\mathrm{TODO} & \epsilon \geq 0.001
+\end{cases}
+\end{equation}
+
+\noindent [NOTE: again the missing expression is extremely long---see \texttt{compy} function \texttt{kn\_cdf}.] The expression given for $\epsilon \geq 0.001$ is exact, but can cause precision errors for low $\epsilon$, thus the $\varepsilon \ll 1$ limit we suggest (i.e., the Thomson scattering dipole phase function). We can sample $\mu$, and therefore $\theta = \cos^{-1} \mu$, by solving $F(\varepsilon, \mu) - u = 0$ for $\mu$, where $u$ is a uniformly distributed random variable on $[0, 1)$. Any root-finding method will work---we employ Brent's method.
+
+With $\theta$ so chosen, the corresponding post-scatter photon energy $\varepsilon^\prime$ is computed from equation \ref{eq:KN_energy_ratio}. We construct the post-scatter photon four-momentum in the (still) boosted, rotated frame:
+
+\begin{equation}
+\mathbf{k^{\prime, erf, rot}} = (\varepsilon^\prime,\ \varepsilon^\prime \sin \theta \cos \phi,\ \varepsilon^\prime \sin \theta \sin \phi,\ \varepsilon^\prime \cos \theta).
+\end{equation}
+
+\item Finally, we transform back to the original frame by unrotating the coordinates and de-boosting:
+
+\begin{equation}
+\mathbf{k^\prime} = \Lambda(-\beta_z) R_y(-\theta^\mathrm{erf}_0) \cdot \mathbf{k^{\prime, erf, rot}}.
+\end{equation}
+
+\noindent The post-scatter photon energy in the original frame is simply
+
+\begin{equation}
+\varepsilon^\prime\ \mathrm{(original\ frame)} = k^\prime_0.
+\end{equation}
+
+\noindent The scattering angle is:
+
+\begin{equation}
+\mu^\prime = \cos \theta^\prime = \frac{1}{\varepsilon \varepsilon^\prime} (k^0_x k^\prime_x + k^0_y k^\prime_y + k^0_z k^\prime_z), 
+\end{equation}
+
+\noindent i.e., the dot product of the (normalized) pre- and post-scatter three-momenta.
+
+\end{enumerate}
+
+This is a procedure for, given an initial photon energy $\varepsilon$ and electron temperature $T_e$, correctly sampling a post-scatter photon energy $\varepsilon^\prime$ at scattering angle $\mu^\prime$. The probability density $p(\varepsilon \to \varepsilon^\prime, \mu^\prime)$ can then be constructed by repeated sampling via the above procedure.
+
+\section*{Direct Evaluation for the Single-Scatter Mean Amplification Ratio}
+
+We begin by recognizing that the integrand in equation 11 above is essentially a weighting function for the relative likelihood for a photon of energy $\varepsilon$ to scatter off an electron with velocity $\beta$ (or factor $\gamma$) at (cosine) angle $\mu_e$ (with respect to the pre-scatter photon's trajectory), i.e.:
+
+\begin{equation}
+w\left(\varepsilon, \gamma, \mu_e\right) = \sigma_\mathrm{KN} \left[ \varepsilon \gamma (1 - \beta \mu_e ) \right] (1 - \beta \mu_e) f_\mathrm{MJ} (\gamma).
+\end{equation}
+
+\noindent Using the same geometry and transformations as in ``step 2'' of the preceding section, we calculate the corresponding electron rest frame pre-scatter photon energy $\varepsilon^\mathrm{erf}$ and $\mu_0^\mathrm{erf} = \cos \theta_0^\mathrm{erf}$ (i.e., equations 24 and 25). The electron rest frame mean post-scatter energy is computed by averaging equation 29 using a normalized equation 30 as a weighting function; this result is then boosted back to the fluid rest frame. These integrals can be performed analytically, and the result is:
+
+\begin{equation}
+\langle \varepsilon^\prime \rangle_{\gamma, \mu_e} = \varepsilon^\mathrm{erf} \gamma \left[ f_1 \left( \varepsilon^\mathrm{erf} / m_e c^2 \right) + \beta \mu_0^\mathrm{erf} f_2 \left( \varepsilon^\mathrm{erf} / m_e c^2 \right) \right],
+\end{equation}
+
+\noindent where the subscripts on the LHS indicate that this mean post-scatter (fluid frame) energy is for a fixed $\gamma$ ($\beta$), $\mu_e$ pair. (NOTE: $f_1$ and $f_2$ are \emph{long}, and require expansion at low energy to retain precision; they are \texttt{mf1} and \texttt{mf2} in \texttt{compy}, respectively.) Averaging this result with the weight function defined above gives us the mean amplification in the fluid frame:
+
+\begin{equation}
+\left\langle \frac{ \varepsilon^\prime }{ \varepsilon } \right\rangle = \frac{1}{\varepsilon} \int_0^\infty d\gamma \int_{-1}^1 d\mu_e\ \langle \varepsilon^\prime \rangle_{\gamma, \mu_e} w\left(\varepsilon, \gamma, \mu_e\right).
+\end{equation}
+
+\end{document}

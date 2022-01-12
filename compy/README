@@ -1,0 +1,10 @@
+Building compy should be extremely straightforward.
+
+Dependencies:
+    - A C compiler.
+    - Python 3.
+    - Numpy.
+
+Run ./build.sh to build the python extension.
+
+Examples for how to use compy can be found in the compy_examples.py script. The document in theory_dec explains some of the relevant physics.

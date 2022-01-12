@@ -1,0 +1,21 @@
+{
+    "ptransx repo dir"     : "/home-1/bkinch1@jhu.edu/code/ptransx",
+    "compton file path"    : "/home/kinch/compton_file_path",
+    "module list"          : {"module0" : "intel/18.0",
+                              "module1" : "intelmpi/2018",
+                              "module2" : "lapack/3.8.0",
+                              "module3" : "python/3.6"},
+    "fsolver build line"   : "CFLAGS=\"-O3 -lmkl_rt\" python3 setup.py build_ext --inplace",
+    "response build line"  : "CFLAGS=\"-O3 -lmkl_rt\" python3 setup.py build_ext --inplace",
+    "pandurata build line" : "CFLAGS=\"-std=c99 -O3\" python3 setup.py build_ext --inplace",
+    "pan file build line"  : "icc -fPIC -O3 -c",
+    "xstar lib dirs"       : {"libdir0" : "/home-1/bkinch1@jhu.edu/code/xstar/xstar_install/heasoft-6.29/heacore/BLD/x86_64-pc-linux-gnu-libc2.17/lib",
+                              "libdir1" : "/home-net/home-1/bkinch1@jhu.edu/code/xstar/xstar_install/heasoft-6.29/ftools/BLD/x86_64-pc-linux-gnu-libc2.17/lib"},
+    "xstar libs"           : {"lib0" : "gfortran",
+                              "lib1" : "readline",
+                              "lib2" : "cfitsio",
+                              "lib3" : "xanlib_6.29",
+                              "lib4" : "ape_2.9"},
+    "xstarsub build line"  : "gfortran -c -fPIC -O3 -ffixed-line-length-0 xstarsub.f",
+    "xstarcomm build line" : "CFLAGS=\"-lgfortran\" python3 setup.py build_ext --inplace"
+}

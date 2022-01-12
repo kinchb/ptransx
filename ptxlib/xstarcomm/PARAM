@@ -1,0 +1,33 @@
+      integer ntyp
+      integer ncn
+      integer nnnl
+      integer nnml
+      integer nni
+      integer nl
+      integer nd
+      integer ndb
+      integer nds
+      integer ndss
+      integer nidat1
+      integer nrdat1
+      integer nkdat1
+      integer nptt
+      integer ndat2
+      integer ncomp
+      integer nxx
+c
+      parameter (ntyp=95)
+      parameter (ncn=10000)
+      parameter (nnnl=500000)
+      parameter (nnml=500000)
+      parameter (nni=465)
+      parameter (nl=30)
+      parameter (nd=9600,ndb=1000000,nds=6000,ndss=200)
+      parameter (nidat1=35000000)
+      parameter (nrdat1=35000000)
+      parameter (nkdat1=35000000)
+      parameter (nptt=10)
+      parameter (ndat2=600000)
+      parameter (ncomp=101)
+      parameter (nxx=10000)
+

@@ -39,7 +39,14 @@ xstar_install/heasoft-6.29/ftools/BLD/x86_64-pc-linux-gnu-libc2.17/lib
 
 Step 1: Cloning the repo.
 
+Quick start: just issue
 
+git clone https://github.com/kinchb/ptransx.git
+
+to clone the repo, and you can get started right away.
+
+If you'd like to contribute, you'll probably want to get added to the repo on
+github. Contact brooks.e.kinch@gmail.com to make that happen.
 
 Step 2: Creating the Compton data files.
 

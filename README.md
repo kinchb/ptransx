@@ -48,6 +48,9 @@ to clone the repo, and you can get started right away.
 If you'd like to contribute, you'll probably want to get added to the repo on
 github. Contact brooks.e.kinch@gmail.com to make that happen.
 
+Note that XSTAR also needs version-specific Compton heating and atomic database files.
+These are too big for github, but they can be found here: https://drive.google.com/drive/folders/1eWKIZ4uYtLyyPD6xqc2kr7XCTUNhLsQh?usp=sharing
+
 Step 2: Creating the Compton data files.
 
 PTRANSX and Pandurata both depend on pre-made tables for the
